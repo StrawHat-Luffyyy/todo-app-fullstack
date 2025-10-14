@@ -6,7 +6,7 @@ export default function Navbar() {
     <header className="border-b border-white/10">
       <nav className="container mx-auto px-4 py-3 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2">
-          <ListTodo className="h-7 w-7 text-blue-500" />
+          <ListTodo className="h-7 w-7 text-gray-300" />
           <span className="text-xl font-bold">TodoApp</span>
         </Link>
         <div className="flex items-center gap-4">
