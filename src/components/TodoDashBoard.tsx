@@ -1,7 +1,8 @@
 "use client";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
-import { PlusCircle } from "lucide-react";
+import { Checkbox } from "./ui/checkbox";
+import { PlusCircle, Trash2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabaseClient";
 
@@ -50,9 +51,33 @@ export default function TodoDashboard() {
     };
   }
 
+  const handleDelete = async (taskId: number) => {
+    const { error } = await supabase.from("todos").delete().eq("id", taskId)
+
+    if (error) {
+      console.error("Error deleting task:", error);
+    } else {
+      setTasks(tasks.filter((task) => task.id !== taskId))
+    }
+  }
+
+  const handleToggleComplete = async (taskId: number, currentStatus: boolean) => {
+    const { error } = await supabase
+      .from("todos")
+      .update({ is_completed: !currentStatus })
+      .eq("id", taskId)
+
+    if (error) {
+      console.error("Error deleting task:", error);
+    } else {
+      setTasks(
+        tasks.map((task) => task.id === taskId ? { ...task, is_completed: !currentStatus } : task)
+      )
+    }
+  }
+
   return (
     <div className="container mx-auto px-4 py-8">
-      {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-3xl font-bold">Tasks for Today</h1>
       </div>
@@ -84,13 +109,36 @@ export default function TodoDashboard() {
                 key={task.id}
                 className="flex items-center justify-between bg-white/5 p-3 rounded-lg mb-2"
               >
+                <div className="flex items-center gap-3">
+                  <Checkbox
+                    id={task.id.toString()}
+                    checked={task.is_completed}
+                    onCheckedChange={() => handleToggleComplete(task.id, task.is_completed)}
+                  />
+                  <label
+                    htmlFor={task.id.toString()}
+                    className={`text-sm font-medium leading-none ${task.is_completed ? "line-through text-gray-500" : ""
+                      }`}
+                  >
+                    {task.text}
+                  </label>
+
+                </div>
                 <span>{task.text}</span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => handleDelete(task.id)}
+                  className="text-gray-500 hover:text-red-500"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
               </li>
             ))}
           </ul>
         ) : (
           <div className="text-center text-gray-500">
-            <p>Your tasks will appear here.</p>
+            <p>Loading tasks or add your first one!</p>
           </div>
         )
         }
