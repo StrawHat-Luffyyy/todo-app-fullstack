@@ -2,30 +2,53 @@
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { PlusCircle } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { supabase } from "@/lib/supabaseClient";
 
 interface Task {
   id: number;
+  created_at: string;
   text: string;
+  is_completed: boolean;
 }
 
 export default function TodoDashboard() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [newTask, setNewTask] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+
+  useEffect(() => {
+    const getTasks = async () => {
+      const { data, error } = await supabase.from("todos").select("*")
+
+      if (error) {
+        console.error("Error fetching tasks:", error)
+      } else {
+        setTasks(data)
+      }
+    }
+    getTasks()
+  }, [])
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newTask.trim() === "") return;
 
-    const taskToAdd: Task = {
-      id: Date.now(),
-      text: newTask,
+    const { data, error } = await supabase
+      .from("todos")
+      .insert([{ text: newTask }])
+      .select()
+      .single()
+
+
+    if (error) {
+      console.error("Error fetching tasks:", error)
+    } else {
+      setTasks([...tasks, data]);
+
+      setNewTask("");
     };
-
-    setTasks([...tasks, taskToAdd]);
-
-    setNewTask("");
-  };
+  }
 
   return (
     <div className="container mx-auto px-4 py-8">
