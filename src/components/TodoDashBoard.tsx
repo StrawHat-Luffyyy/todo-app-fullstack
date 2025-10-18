@@ -1,80 +1,98 @@
 "use client";
+
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Checkbox } from "./ui/checkbox";
 import { PlusCircle, Trash2 } from "lucide-react";
 import { useState, useEffect } from "react";
-import { supabase } from "@/lib/supabaseClient";
+import { createBrowserClient } from "@supabase/ssr";
+import type { User } from "@supabase/supabase-js";
 
 interface Task {
   id: number;
   created_at: string;
   text: string;
   is_completed: boolean;
+  user_id: string;
 }
 
 export default function TodoDashboard() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [newTask, setNewTask] = useState("");
+  const [user, setUser] = useState<User | null>(null);
 
-
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
   useEffect(() => {
-    const getTasks = async () => {
-      const { data, error } = await supabase.from("todos").select("*")
+    const getUserAndTasks = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      setUser(user);
+      const { data, error } = await supabase
+        .from("todos")
+        .select("*")
+        .order("created_at", { ascending: true });
 
       if (error) {
-        console.error("Error fetching tasks:", error)
-      } else {
-        setTasks(data)
+        console.error("Error fetching tasks : ", error);
+      } else if (data) {
+        setTasks(data);
       }
-    }
-    getTasks()
-  }, [])
+    };
+    getUserAndTasks();
+  }, [supabase]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (newTask.trim() === "") return;
+    if (newTask.trim() === "" || !user) return;
 
     const { data, error } = await supabase
       .from("todos")
-      .insert([{ text: newTask }])
+      .insert([{ text: newTask, user_id: user.id }])
       .select()
-      .single()
-
+      .single();
 
     if (error) {
-      console.error("Error fetching tasks:", error)
+      console.error("Error fetching tasks:", error);
     } else {
       setTasks([...tasks, data]);
 
       setNewTask("");
-    };
-  }
+    }
+  };
 
   const handleDelete = async (taskId: number) => {
-    const { error } = await supabase.from("todos").delete().eq("id", taskId)
+    const { error } = await supabase.from("todos").delete().eq("id", taskId);
 
     if (error) {
       console.error("Error deleting task:", error);
     } else {
-      setTasks(tasks.filter((task) => task.id !== taskId))
+      setTasks(tasks.filter((task) => task.id !== taskId));
     }
-  }
+  };
 
-  const handleToggleComplete = async (taskId: number, currentStatus: boolean) => {
+  const handleToggleComplete = async (
+    taskId: number,
+    currentStatus: boolean
+  ) => {
     const { error } = await supabase
       .from("todos")
       .update({ is_completed: !currentStatus })
-      .eq("id", taskId)
+      .eq("id", taskId);
 
     if (error) {
       console.error("Error deleting task:", error);
     } else {
       setTasks(
-        tasks.map((task) => task.id === taskId ? { ...task, is_completed: !currentStatus } : task)
-      )
+        tasks.map((task) =>
+          task.id === taskId ? { ...task, is_completed: !currentStatus } : task
+        )
+      );
     }
-  }
+  };
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -92,11 +110,8 @@ export default function TodoDashboard() {
           onChange={(e) => setNewTask(e.target.value)}
           className="bg-white/5 border-white/10 focus:ring-blue-500"
         />
-        <Button
-          type="submit"
-          className="bg-blue-600 hover:bg-blue-700">
-          <PlusCircle
-            className="h-4 w-4 mr-2" />
+        <Button type="submit" className="bg-blue-600 hover:bg-blue-700">
+          <PlusCircle className="h-4 w-4 mr-2" />
           Add Task
         </Button>
       </form>
@@ -113,16 +128,18 @@ export default function TodoDashboard() {
                   <Checkbox
                     id={task.id.toString()}
                     checked={task.is_completed}
-                    onCheckedChange={() => handleToggleComplete(task.id, task.is_completed)}
+                    onCheckedChange={() =>
+                      handleToggleComplete(task.id, task.is_completed)
+                    }
                   />
                   <label
                     htmlFor={task.id.toString()}
-                    className={`text-sm font-medium leading-none ${task.is_completed ? "line-through text-gray-500" : ""
-                      }`}
+                    className={`text-sm font-medium leading-none ${
+                      task.is_completed ? "line-through text-gray-500" : ""
+                    }`}
                   >
                     {task.text}
                   </label>
-
                 </div>
                 <span>{task.text}</span>
                 <Button
@@ -140,8 +157,7 @@ export default function TodoDashboard() {
           <div className="text-center text-gray-500">
             <p>Loading tasks or add your first one!</p>
           </div>
-        )
-        }
+        )}
       </div>
     </div>
   );
